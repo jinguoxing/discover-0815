@@ -4,7 +4,7 @@ import { SessionList } from './components/SessionList';
 import { ConversationWorkspace } from './components/ConversationWorkspace';
 import { EvidenceSummary } from './components/EvidenceSummary';
 import { EvidenceModal } from './components/EvidenceModal';
-import { FindDataWorkspace } from './components/FindDataWorkspace';
+import { SemovixFindDataDemo } from './components/SemovixFindDataDemo';
 import {
   INITIAL_SESSIONS,
   INITIAL_EVIDENCE,
@@ -414,9 +414,8 @@ export default function App() {
         }`}
       >
         {viewMode === 'find' ? (
-          <FindDataWorkspace
+          <SemovixFindDataDemo
             onEnterAskData={handleEnterAskDataFromFindData}
-            onSwitchViewMode={setViewMode}
           />
         ) : (
           <>

@@ -1,0 +1,6 @@
+{
+  "name": "Xino AI Data Advisor Workspace",
+  "description": "Semovix enterprise data semantic governance platform - AI Data Advisor Workspace driven by Enterprise Data Advisor Skill.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

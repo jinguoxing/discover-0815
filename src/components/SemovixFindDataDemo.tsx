@@ -478,10 +478,14 @@ export const SemovixFindDataDemo: React.FC<Props> = ({ onEnterAskData }) => {
                         {/* Resources List */}
                         <div className="p-4 space-y-3 divide-y divide-[#E6EAF0]">
                           {/* Resource 01 */}
-                          <div className="pt-2 flex items-start justify-between">
+                          <div
+                            onClick={() => handleSelectResourceForEvidence('60 岁以上人口数', 'resource')}
+                            className="pt-2 flex items-start justify-between cursor-pointer hover:bg-slate-50/80 -mx-2 px-2 py-1 rounded-lg transition-colors"
+                            title="点击查看资源证据"
+                          >
                             <div className="space-y-1">
                               <div className="flex items-center gap-2">
-                                <span className="font-bold text-sm text-[#172033]">60 岁以上人口数</span>
+                                <span className="font-bold text-sm text-[#172033] hover:text-[#2563EB]">60 岁以上人口数</span>
                                 <span className="px-1.5 py-0.2 bg-emerald-50 text-[#16A36A] text-[10px] font-mono border border-emerald-200 rounded font-bold">
                                   Metric · Published
                                 </span>
@@ -490,16 +494,20 @@ export const SemovixFindDataDemo: React.FC<Props> = ({ onEnterAskData }) => {
                                 角色：<strong className="text-[#172033]">PRIMARY · 人口规模</strong> | 负责：正式 60 岁及以上人口统计口径
                               </p>
                             </div>
-                            <span className="px-2.5 py-1 bg-emerald-50 text-[#16A36A] border border-emerald-200 text-xs font-bold rounded-md">
+                            <span className="px-2.5 py-1 bg-emerald-50 text-[#16A36A] border border-emerald-200 text-xs font-bold rounded-md shrink-0">
                               AVAILABLE
                             </span>
                           </div>
 
                           {/* Resource 02 */}
-                          <div className="pt-3 flex items-start justify-between">
+                          <div
+                            onClick={() => handleSelectResourceForEvidence('行政区划', 'resource')}
+                            className="pt-3 flex items-start justify-between cursor-pointer hover:bg-slate-50/80 -mx-2 px-2 py-1 rounded-lg transition-colors"
+                            title="点击查看资源证据"
+                          >
                             <div className="space-y-1">
                               <div className="flex items-center gap-2">
-                                <span className="font-bold text-sm text-[#172033]">行政区划</span>
+                                <span className="font-bold text-sm text-[#172033] hover:text-[#2563EB]">行政区划</span>
                                 <span className="px-1.5 py-0.2 bg-blue-50 text-[#2563EB] text-[10px] font-mono border border-blue-200 rounded">
                                   Data Asset
                                 </span>
@@ -508,7 +516,7 @@ export const SemovixFindDataDemo: React.FC<Props> = ({ onEnterAskData }) => {
                                 角色：<strong className="text-[#172033]">REFERENCE · 区域维度</strong> | 负责：街镇编码 · 街镇名称 · 行政层级统一
                               </p>
                             </div>
-                            <span className="px-2.5 py-1 bg-emerald-50 text-[#16A36A] border border-emerald-200 text-xs font-bold rounded-md">
+                            <span className="px-2.5 py-1 bg-emerald-50 text-[#16A36A] border border-emerald-200 text-xs font-bold rounded-md shrink-0">
                               AVAILABLE
                             </span>
                           </div>
@@ -519,8 +527,9 @@ export const SemovixFindDataDemo: React.FC<Props> = ({ onEnterAskData }) => {
                             const personStatus = personRes ? getResourceStatusDisplay(personRes) : null;
                             return (
                               <div
-                                onClick={() => handleSelectResourceForEvidence('人口基本信息', 'availability')}
+                                onClick={() => handleSelectResourceForEvidence('人口基本信息', 'resource')}
                                 className="pt-3 flex items-start justify-between bg-amber-50/40 -mx-4 px-4 py-2.5 cursor-pointer hover:bg-amber-50/70 transition-colors"
+                                title="点击查看资源证据"
                               >
                                 <div className="space-y-1">
                                   <div className="flex items-center gap-2">

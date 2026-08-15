@@ -12,9 +12,16 @@ import {
   Layers,
   Check,
   Clock,
+  KeyRound,
+  FileCode,
+  Tag,
+  Building,
+  Calendar,
+  Eye,
 } from 'lucide-react';
 import {
   AvailabilitySnapshotViewModel,
+  getMarketplaceResourceViewModel,
   getResourceFromSnapshot,
   getResourceStatusDisplay,
 } from '../models/availability';
@@ -24,6 +31,7 @@ export type EvidenceTabType = 'evidence' | 'resource' | 'availability' | 'relati
 interface Props {
   activeTab: EvidenceTabType;
   onTabChange: (tab: EvidenceTabType) => void;
+  selectedResourceId?: string;
   selectedResourceName?: string;
   onOpenPermissionDrawer?: () => void;
   scenario?: 'scenario-a' | 'scenario-b' | 'scenario-c';
@@ -33,13 +41,26 @@ interface Props {
 export const SemovixEvidencePanel: React.FC<Props> = ({
   activeTab,
   onTabChange,
-  selectedResourceName = '人口基本信息',
+  selectedResourceId,
+  selectedResourceName = '60岁以上人口数',
   onOpenPermissionDrawer,
   scenario = 'scenario-a',
   snapshot,
 }) => {
-  const selectedResource = getResourceFromSnapshot(snapshot, selectedResourceName);
-  const selectedStatus = selectedResource ? getResourceStatusDisplay(selectedResource) : null;
+  const resourceIdentifier = selectedResourceId || selectedResourceName;
+  const resourceModel = getMarketplaceResourceViewModel(snapshot, resourceIdentifier);
+  const resourceStatus = getResourceStatusDisplay({
+    resourceId: resourceModel.resourceId,
+    resourceName: resourceModel.resourceName,
+    resourceType: resourceModel.resourceType,
+    operations: resourceModel.operations,
+    checkedAt: resourceModel.checkedAt,
+    validUntil: resourceModel.validUntil,
+    requestState: resourceModel.requestState,
+    roleTag: resourceModel.roleTag,
+    isCoreForExecution: resourceModel.isCoreForExecution,
+  });
+
   return (
     <aside className="w-[410px] bg-white border-l border-[#E6EAF0] flex flex-col shrink-0 overflow-hidden h-full select-none text-[#172033]">
       {/* Panel Header */}
@@ -253,176 +274,208 @@ export const SemovixEvidencePanel: React.FC<Props> = ({
 
         {activeTab === 'resource' && (
           <div className="space-y-4">
-            <div className="p-4 bg-[#F7F9FC] border border-[#E6EAF0] rounded-lg space-y-3">
-              <div className="flex items-center justify-between">
+            <div className="p-4 bg-[#F7F9FC] border border-[#E6EAF0] rounded-xl space-y-3.5 shadow-2xs">
+              {/* Header */}
+              <div className="flex items-start justify-between gap-2">
                 <div>
-                  <h3 className="text-sm font-bold text-[#172033]">{selectedResourceName}</h3>
-                  <span className="text-[10px] text-[#667085] font-mono">
-                    {selectedResource?.resourceType === 'Metric'
-                      ? 'Metric Registry · Published'
-                      : 'Data Asset · Marketplace Published'}
+                  <h3 className="text-base font-bold text-[#172033]">{resourceModel.resourceName}</h3>
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    <span className="text-[10px] text-[#667085] font-mono bg-white px-1.5 py-0.5 rounded border border-[#E6EAF0]">
+                      {resourceModel.typeDisplay}
+                    </span>
+                    <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 font-semibold">
+                      状态：{resourceModel.status}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="shrink-0">
+                  <span
+                    className={`px-2.5 py-1 text-[11px] font-bold rounded-md border flex items-center gap-1 ${
+                      resourceModel.availabilityBadge.includes('AVAILABLE')
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : resourceModel.availabilityBadge.includes('PENDING')
+                        ? 'bg-amber-100 text-amber-900 border-amber-300'
+                        : 'bg-amber-50 text-amber-800 border-amber-200'
+                    }`}
+                  >
+                    {resourceModel.requestState === 'REQUEST_PENDING' && (
+                      <Clock className="w-3.5 h-3.5 text-amber-700 animate-pulse" />
+                    )}
+                    {resourceModel.availabilityBadge}
                   </span>
                 </div>
-                {selectedStatus && (
-                  <span className={`px-2 py-0.5 border text-[10px] rounded ${selectedStatus.pillClasses}`}>
-                    {selectedStatus.badgeLabel}
-                  </span>
-                )}
               </div>
 
-              {/* Operations Matrix from unified model */}
-              {selectedResource && (
-                <div className="bg-white p-2.5 rounded border border-[#E6EAF0] space-y-1.5">
-                  <div className="text-[10px] font-bold text-[#667085] uppercase tracking-wider">
-                    操作权限矩阵 (Operations Matrix)
+              {/* Dynamic Metadata Attributes */}
+              <div className="bg-white rounded-lg border border-[#E6EAF0] p-3 space-y-2 text-[11px]">
+                <div className="grid grid-cols-1 gap-1.5">
+                  <div className="flex justify-between py-1 border-b border-slate-100">
+                    <span className="text-[#667085]">类型：</span>
+                    <span className="font-semibold text-[#172033] font-mono">
+                      {resourceModel.resourceType}
+                    </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-1.5 text-[10px] font-mono">
-                    <div className="p-1 bg-[#F7F9FC] rounded border border-slate-200/60 flex justify-between">
-                      <span className="text-slate-500">DISCOVER:</span>
-                      <span className="font-bold text-emerald-700">{selectedResource.operations.DISCOVER}</span>
-                    </div>
-                    <div className="p-1 bg-[#F7F9FC] rounded border border-slate-200/60 flex justify-between">
-                      <span className="text-slate-500">VIEW_METADATA:</span>
-                      <span className="font-bold text-emerald-700">{selectedResource.operations.VIEW_METADATA}</span>
-                    </div>
-                    <div className={`p-1 rounded border flex justify-between ${
-                      selectedResource.operations.QUERY === 'ALLOW'
+                  <div className="flex justify-between py-1 border-b border-slate-100">
+                    <span className="text-[#667085]">状态：</span>
+                    <span className="font-semibold text-emerald-700">
+                      {resourceModel.status}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-100">
+                    <span className="text-[#667085]">方案角色：</span>
+                    <span className="font-semibold text-[#2563EB]">
+                      {resourceModel.roleTag}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-100">
+                    <span className="text-[#667085]">
+                      {resourceModel.resourceType === 'Metric' ? '衡量对象：' : '业务对象：'}
+                    </span>
+                    <span className="font-semibold text-[#172033]">
+                      {resourceModel.measureSubject}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-100">
+                    <span className="text-[#667085]">时间语义：</span>
+                    <span className="font-semibold text-[#172033]">
+                      {resourceModel.timeSemantics}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-100">
+                    <span className="text-[#667085]">记录粒度：</span>
+                    <span className="font-semibold text-[#172033]">
+                      {resourceModel.granularity}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-100">
+                    <span className="text-[#667085]">相关业务域：</span>
+                    <span className="font-semibold text-[#172033]">
+                      {resourceModel.businessDomain}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <span className="text-[#667085]">责任单位：</span>
+                    <span className="font-semibold text-[#172033]">
+                      {resourceModel.department}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Operations Matrix */}
+              <div className="bg-white p-3 rounded-lg border border-[#E6EAF0] space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-[#667085] uppercase tracking-wider">
+                    操作权限语义矩阵 (Operations Matrix)
+                  </span>
+                  <span className="text-[10px] text-slate-400">实时授权状态</span>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5 text-[10px] font-mono">
+                  <div className="p-1.5 bg-[#F7F9FC] rounded border border-slate-200/70 flex justify-between items-center">
+                    <span className="text-slate-500">DISCOVER:</span>
+                    <span className="font-bold text-emerald-700">{resourceModel.operations.DISCOVER}</span>
+                  </div>
+                  <div className="p-1.5 bg-[#F7F9FC] rounded border border-slate-200/70 flex justify-between items-center">
+                    <span className="text-slate-500">VIEW_METADATA:</span>
+                    <span className="font-bold text-emerald-700">{resourceModel.operations.VIEW_METADATA}</span>
+                  </div>
+                  <div
+                    className={`p-1.5 rounded border flex justify-between items-center ${
+                      resourceModel.operations.QUERY === 'ALLOW'
                         ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                        : selectedResource.requestState === 'REQUEST_PENDING'
+                        : resourceModel.requestState === 'REQUEST_PENDING'
                         ? 'bg-amber-100 border-amber-300 text-amber-900'
                         : 'bg-amber-50 border-amber-200 text-amber-800'
-                    }`}>
-                      <span className="font-semibold">QUERY:</span>
-                      <span className="font-bold">
-                        {selectedResource.requestState === 'REQUEST_PENDING'
-                          ? 'REQUEST_PENDING'
-                          : selectedResource.operations.QUERY}
-                      </span>
-                    </div>
-                    <div className="p-1 bg-[#F7F9FC] rounded border border-slate-200/60 flex justify-between">
-                      <span className="text-slate-500">EXPORT:</span>
-                      <span className={`font-bold ${
-                        selectedResource.operations.EXPORT === 'ALLOW' ? 'text-emerald-700' : 'text-rose-600'
-                      }`}>
-                        {selectedResource.operations.EXPORT}
-                      </span>
-                    </div>
+                    }`}
+                  >
+                    <span className="font-semibold">QUERY:</span>
+                    <span className="font-bold">
+                      {resourceModel.requestState === 'REQUEST_PENDING'
+                        ? 'PENDING'
+                        : resourceModel.operations.QUERY}
+                    </span>
+                  </div>
+                  <div className="p-1.5 bg-[#F7F9FC] rounded border border-slate-200/70 flex justify-between items-center">
+                    <span className="text-slate-500">EXPORT:</span>
+                    <span
+                      className={`font-bold ${
+                        resourceModel.operations.EXPORT === 'ALLOW' ? 'text-emerald-700' : 'text-rose-600'
+                      }`}
+                    >
+                      {resourceModel.operations.EXPORT}
+                    </span>
                   </div>
                 </div>
-              )}
+              </div>
 
-              <div className="space-y-2 pt-2 border-t border-[#E6EAF0] text-[11px]">
-                <div className="flex justify-between py-1 border-b border-slate-100">
-                  <span className="text-[#667085]">当前方案角色</span>
-                  <span className="font-semibold text-[#172033]">
-                    {selectedResource?.roleTag || (
-                      selectedResourceName === '60岁以上人口数'
-                        ? 'PRIMARY · 人口规模'
-                        : selectedResourceName === '行政区划'
-                        ? 'REFERENCE · 区域维度'
-                        : selectedResourceName === '养老机构基本信息'
-                        ? 'DOMAIN · 养老机构'
-                        : selectedResourceName === '养老机构服务能力'
-                        ? 'DOMAIN · 供给能力'
-                        : selectedResourceName === '12345热线工单信息' || selectedResourceName === '12345市民热线工单信息'
-                        ? 'DOMAIN · 市民热线工单'
-                        : 'OPTIONAL ENHANCEMENT · 人级补充'
-                    )}
+              {/* Dynamic Schema Fields Table */}
+              <div className="bg-white p-3 rounded-lg border border-[#E6EAF0] space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-[#172033] flex items-center gap-1.5">
+                    <FileCode className="w-3.5 h-3.5 text-[#2563EB]" />
+                    {resourceModel.resourceType === 'Metric' ? '指标统计维度与口径' : '关键语义列 (Schema Fields)'}
+                  </span>
+                  <span className="text-[10px] text-[#667085] font-mono">
+                    {resourceModel.fields.length} 列
                   </span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-slate-100">
-                  <span className="text-[#667085]">主要记录主体</span>
-                  <span className="font-semibold text-[#172033]">
-                    {selectedResourceName === '行政区划'
-                      ? '行政区域'
-                      : selectedResourceName === '养老机构基本信息' || selectedResourceName === '养老机构服务能力'
-                      ? '养老机构'
-                      : selectedResourceName.includes('热线')
-                      ? '工单记录'
-                      : '自然人'}
-                  </span>
-                </div>
-                <div className="flex justify-between py-1 border-b border-slate-100">
-                  <span className="text-[#667085]">记录粒度</span>
-                  <span className="font-semibold text-[#172033]">
-                    {selectedResourceName === '60岁以上人口数'
-                      ? '街镇聚合指标 (Metric Level)'
-                      : selectedResourceName === '行政区划'
-                      ? '街镇/村居级'
-                      : selectedResourceName === '养老机构基本信息' || selectedResourceName === '养老机构服务能力'
-                      ? '机构级 (Facility Level)'
-                      : selectedResourceName.includes('热线')
-                      ? '工单级 (Ticket Level)'
-                      : '人级 (Individual Level)'}
-                  </span>
-                </div>
-                <div className="flex justify-between py-1 border-b border-slate-100">
-                  <span className="text-[#667085]">相关业务域</span>
-                  <span className="font-semibold text-[#172033]">
-                    {selectedResourceName.includes('养老')
-                      ? '养老服务 · 设施与床位'
-                      : selectedResourceName.includes('热线')
-                      ? '公共服务 · 12345工单'
-                      : '人口服务 · 人口统计'}
-                  </span>
+
+                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-0.5">
+                  {resourceModel.fields.map((f) => (
+                    <div
+                      key={f.name}
+                      className="p-2 bg-[#F7F9FC] border border-slate-100 rounded text-[10px] flex items-center justify-between gap-2"
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        {f.isPrimaryKey && (
+                          <span className="px-1 py-0.2 bg-indigo-100 text-[#4F46E5] rounded text-[8px] font-bold font-mono">
+                            PK
+                          </span>
+                        )}
+                        <span className="font-mono font-bold text-slate-800 truncate">{f.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0 text-right">
+                        <span className="text-slate-500 text-[10px]">{f.comment}</span>
+                        <span className="px-1 py-0.2 bg-white border border-slate-200 rounded text-[9px] font-mono text-slate-600">
+                          {f.type}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              <div className="space-y-1.5 pt-2">
-                <span className="text-[11px] font-semibold text-[#667085]">
-                  {selectedResourceName === '60岁以上人口数' ? '指标统计口径' : '关键语义列'}
-                </span>
-                <div className="flex flex-wrap gap-1">
-                  {selectedResourceName === '60岁以上人口数'
-                    ? ['age >= 60', 'resident_status = 常住', 'region_granularity = 街镇'].map((f) => (
-                        <span
-                          key={f}
-                          className="px-2 py-1 bg-white border border-[#E6EAF0] text-[#172033] text-[10px] font-mono rounded"
-                        >
-                          {f}
-                        </span>
-                      ))
-                    : selectedResourceName === '行政区划'
-                    ? ['region_code (街镇编码)', 'region_name (街镇名称)', 'level (行政层级)'].map((f) => (
-                        <span
-                          key={f}
-                          className="px-2 py-1 bg-white border border-[#E6EAF0] text-[#172033] text-[10px] font-mono rounded"
-                        >
-                          {f}
-                        </span>
-                      ))
-                    : selectedResourceName === '养老机构基本信息'
-                    ? ['org_id (机构ID)', 'org_name (机构名称)', 'region_code (所属街镇)', 'org_type (机构类型)'].map((f) => (
-                        <span
-                          key={f}
-                          className="px-2 py-1 bg-white border border-[#E6EAF0] text-[#172033] text-[10px] font-mono rounded"
-                        >
-                          {f}
-                        </span>
-                      ))
-                    : selectedResourceName === '养老机构服务能力'
-                    ? ['org_id (机构ID)', 'total_beds (规划床位)', 'available_beds (可用床位)', 'care_beds (护理床位)'].map((f) => (
-                        <span
-                          key={f}
-                          className="px-2 py-1 bg-white border border-[#E6EAF0] text-[#172033] text-[10px] font-mono rounded"
-                        >
-                          {f}
-                        </span>
-                      ))
-                    : ['birth_date (出生日期)', 'resident_status (常住状态)', 'region_code (行政区域)'].map((f) => (
-                        <span
-                          key={f}
-                          className="px-2 py-1 bg-white border border-[#E6EAF0] text-[#172033] text-[10px] font-mono rounded"
-                        >
-                          {f}
-                        </span>
-                      ))}
+              {/* Formula & Compliance */}
+              <div className="p-3 bg-blue-50/60 border border-blue-200/70 rounded-lg space-y-1.5 text-[11px]">
+                <div className="font-bold text-blue-950 flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-blue-700" />
+                  <span>口径与合规说明</span>
                 </div>
+                <p className="text-blue-900 leading-relaxed font-mono text-[10px] bg-white/70 p-1.5 rounded border border-blue-100">
+                  {resourceModel.summaryOrFormula}
+                </p>
+                <p className="text-slate-600 text-[10px] leading-relaxed">
+                  {resourceModel.complianceNotes}
+                </p>
               </div>
 
-              <div className="pt-3">
+              {/* Actions */}
+              <div className="pt-1 space-y-2">
+                {resourceModel.operations.QUERY === 'REQUESTABLE' &&
+                  resourceModel.requestState === 'NOT_REQUESTED' &&
+                  onOpenPermissionDrawer && (
+                    <button
+                      onClick={onOpenPermissionDrawer}
+                      className="w-full py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                    >
+                      <KeyRound className="w-3.5 h-3.5" />
+                      <span>申请该资源查询权限 (QUERY Permission)</span>
+                    </button>
+                  )}
+
                 <button className="w-full py-2 bg-white border border-[#E6EAF0] hover:bg-slate-50 text-[#172033] font-medium text-xs rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs">
-                  <span>查看完整资源详情</span>
+                  <span>在语义资产目录中查看完整详情</span>
                   <ExternalLink className="w-3.5 h-3.5 text-[#667085]" />
                 </button>
               </div>
@@ -438,7 +491,7 @@ export const SemovixEvidencePanel: React.FC<Props> = ({
                   统一可用性快照 (Availability Snapshot)
                 </h3>
                 <p className="text-[10px] text-[#667085] mt-0.5">
-                  Single Source of Truth · 检查时间：{snapshot.timestamp}
+                  Single Source of Truth · 权限检查：刚刚
                 </p>
               </div>
               <span className="px-2 py-0.5 bg-blue-50 text-[#2563EB] border border-blue-200 text-[10px] font-mono font-bold rounded">
@@ -446,67 +499,109 @@ export const SemovixEvidencePanel: React.FC<Props> = ({
               </span>
             </div>
 
-            {/* List all resources strictly from AvailabilitySnapshotViewModel */}
-            <div className="border border-[#E6EAF0] rounded-lg overflow-hidden divide-y divide-[#E6EAF0]">
+            {/* List all resources strictly from AvailabilitySnapshotViewModel with explicit operation semantics */}
+            <div className="border border-[#E6EAF0] rounded-xl overflow-hidden divide-y divide-[#E6EAF0] shadow-2xs bg-white">
               {snapshot.resources.map((res) => {
                 const status = getResourceStatusDisplay(res);
+                const isQueryAllowed = res.operations.QUERY === 'ALLOW' || res.requestState === 'AVAILABLE';
+                const isMetadataAllowed = res.operations.VIEW_METADATA === 'ALLOW';
 
                 return (
-                  <div key={res.resourceId} className="p-3 bg-white space-y-2 text-xs">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-[#172033]">{res.resourceName}</span>
-                        <span className="text-[10px] text-slate-400 font-mono">({res.resourceType})</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`px-2 py-0.5 border text-[10px] rounded flex items-center gap-1 ${status.pillClasses}`}>
-                          {status.isPending && <Clock className="w-3 h-3 text-amber-700 animate-pulse" />}
-                          {status.badgeLabel}
+                  <div key={res.resourceId} className="p-3.5 bg-white space-y-2.5 text-xs hover:bg-slate-50/50 transition-colors">
+                    {/* Top title & primary status */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-[#172033] text-sm">{res.resourceName}</span>
+                        <span className="text-[10px] text-slate-500 font-mono bg-slate-100 px-1.5 py-0.5 rounded">
+                          {res.resourceType}
                         </span>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {/* Primary Status with Operation semantics: QUERY · AVAILABLE or QUERY · REQUESTABLE */}
+                        <span className={`px-2 py-0.5 border text-[10px] font-bold rounded flex items-center gap-1 ${
+                          isQueryAllowed
+                            ? 'bg-emerald-50 text-[#16A36A] border-emerald-200'
+                            : res.requestState === 'REQUEST_PENDING'
+                            ? 'bg-amber-100 text-amber-900 border-amber-300'
+                            : 'bg-amber-50 text-amber-800 border-amber-200'
+                        }`}>
+                          {status.isPending && <Clock className="w-3 h-3 text-amber-700 animate-pulse" />}
+                          {isQueryAllowed
+                            ? 'QUERY · AVAILABLE'
+                            : res.requestState === 'REQUEST_PENDING'
+                            ? 'QUERY · REQUEST_PENDING'
+                            : 'QUERY · REQUESTABLE'}
+                        </span>
+
                         {status.canApply && onOpenPermissionDrawer && (
                           <button
                             onClick={onOpenPermissionDrawer}
-                            className="text-[11px] text-[#2563EB] hover:underline font-medium cursor-pointer"
+                            className="px-2 py-0.5 bg-[#2563EB] hover:bg-blue-700 text-white rounded text-[11px] font-medium cursor-pointer shadow-2xs"
                           >
-                            {status.isPending ? '查看进度' : '申请'}
+                            {status.isPending ? '查看进度' : '申请权限'}
                           </button>
                         )}
                       </div>
                     </div>
 
-                    {/* Operations pill matrix */}
-                    <div className="flex items-center gap-1.5 text-[10px] font-mono pt-0.5">
-                      <span className="px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded">
-                        DISCOVER: {res.operations.DISCOVER}
-                      </span>
-                      <span className="px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded">
-                        VIEW_METADATA: {res.operations.VIEW_METADATA}
-                      </span>
-                      <span className={`px-1.5 py-0.2 rounded font-semibold ${
-                        res.operations.QUERY === 'ALLOW'
-                          ? 'bg-emerald-50 text-[#16A36A]'
-                          : res.requestState === 'REQUEST_PENDING'
-                          ? 'bg-amber-100 text-amber-900'
-                          : 'bg-amber-50 text-[#F59E0B]'
-                      }`}>
-                        QUERY: {res.requestState === 'REQUEST_PENDING' ? 'PENDING' : res.operations.QUERY}
-                      </span>
-                      <span className="px-1.5 py-0.2 bg-slate-100 text-slate-500 rounded">
-                        EXPORT: {res.operations.EXPORT}
-                      </span>
+                    {/* Operation breakdown pills (P1-03) */}
+                    <div className="grid grid-cols-3 gap-1.5 text-[10px] font-mono">
+                      {/* VIEW_METADATA */}
+                      <div className="p-1.5 bg-[#F7F9FC] rounded border border-slate-200/70 flex items-center justify-between">
+                        <span className="text-slate-500">元数据:</span>
+                        <span className="font-bold text-emerald-700">
+                          {isMetadataAllowed ? 'AVAILABLE' : 'DENY'}
+                        </span>
+                      </div>
+
+                      {/* QUERY */}
+                      <div
+                        className={`p-1.5 rounded border flex items-center justify-between ${
+                          isQueryAllowed
+                            ? 'bg-emerald-50/70 border-emerald-200 text-emerald-800'
+                            : res.requestState === 'REQUEST_PENDING'
+                            ? 'bg-amber-100 border-amber-300 text-amber-900'
+                            : 'bg-amber-50/70 border-amber-200 text-amber-800'
+                        }`}
+                      >
+                        <span className="font-semibold">查询:</span>
+                        <span className="font-bold">
+                          {res.requestState === 'REQUEST_PENDING'
+                            ? 'PENDING'
+                            : isQueryAllowed
+                            ? 'AVAILABLE'
+                            : 'REQUESTABLE'}
+                        </span>
+                      </div>
+
+                      {/* EXPORT */}
+                      <div className="p-1.5 bg-[#F7F9FC] rounded border border-slate-200/70 flex items-center justify-between">
+                        <span className="text-slate-500">导出:</span>
+                        <span
+                          className={`font-bold ${
+                            res.operations.EXPORT === 'ALLOW' ? 'text-emerald-700' : 'text-slate-400'
+                          }`}
+                        >
+                          {res.operations.EXPORT === 'ALLOW' ? 'AVAILABLE' : 'DENY'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 );
               })}
             </div>
 
-            {/* Dynamic summary badge box */}
-            <div className="p-3 bg-[#F7F9FC] border border-[#E6EAF0] rounded-lg text-[11px] text-[#667085] leading-relaxed space-y-1">
-              <div className="font-semibold text-[#172033]">
-                可用性统一度量：{snapshot.bottomSummaryText}
+            {/* Dynamic summary and footer */}
+            <div className="p-3.5 bg-[#F7F9FC] border border-[#E6EAF0] rounded-xl text-[11px] text-[#667085] leading-relaxed space-y-1.5 shadow-2xs">
+              <div className="font-bold text-[#172033] flex items-center justify-between">
+                <span>可用性统一度量：{snapshot.bottomSummaryText}</span>
+                <span className="text-[10px] text-[#2563EB] font-normal font-mono bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
+                  权限检查：刚刚
+                </span>
               </div>
-              <p>
-                当前所有视图（中间方案卡片、右侧依据面板、底部状态栏、授权抽屉）严格消费统一的 <code className="text-[#2563EB] font-bold">AvailabilitySnapshotViewModel</code>。
+              <p className="text-slate-600">
+                当前状态是实时权限快照，进入查询、导出或 API 调用前仍会重新鉴权。
               </p>
             </div>
           </div>
@@ -668,3 +763,4 @@ export const SemovixEvidencePanel: React.FC<Props> = ({
     </aside>
   );
 };
+

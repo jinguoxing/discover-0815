@@ -213,7 +213,7 @@ export const SemovixScenarioCDialogue: React.FC<Props> = ({
               <div className="space-y-2 text-xs">
                 {/* 1. 60 岁以上人口数 */}
                 <div
-                  onClick={() => onSelectResource('60岁以上人口数', 'evidence')}
+                  onClick={() => onSelectResource('60岁以上人口数', 'resource')}
                   className="p-3 bg-white border border-[#E6EAF0] hover:border-[#2563EB] rounded-lg transition-colors cursor-pointer space-y-1 group"
                 >
                   <div className="flex items-center justify-between">
@@ -309,7 +309,7 @@ export const SemovixScenarioCDialogue: React.FC<Props> = ({
 
                 {/* 5. 人口基本信息 (Optional) */}
                 <div
-                  onClick={() => onSelectResource('人口基本信息', 'availability')}
+                  onClick={() => onSelectResource('人口基本信息', 'resource')}
                   className="p-3 bg-slate-50 border border-slate-200 hover:border-amber-400 rounded-lg transition-colors cursor-pointer space-y-1 group"
                 >
                   <div className="flex items-center justify-between">

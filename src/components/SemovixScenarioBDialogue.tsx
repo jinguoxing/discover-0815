@@ -197,7 +197,7 @@ export const SemovixScenarioBDialogue: React.FC<Props> = ({
               <div className="space-y-2 text-xs">
                 {/* Resource 01: 人口基本信息 */}
                 <div
-                  onClick={() => onSelectResource('人口基本信息', 'availability')}
+                  onClick={() => onSelectResource('人口基本信息', 'resource')}
                   className="p-3 bg-amber-50/40 border border-amber-200 hover:border-amber-400 rounded-lg transition-colors cursor-pointer space-y-1 group"
                 >
                   <div className="flex items-center justify-between">

@@ -1,5 +1,43 @@
 export type SkillStatus = 'Ready' | 'Analyzing' | 'SearchingData' | 'GeneratingInsight';
 
+export type PermissionRequestState =
+  | 'NOT_REQUESTED'
+  | 'REQUEST_PENDING'
+  | 'AVAILABLE'
+  | 'DENIED';
+
+export type OperationPermission = 'ALLOW' | 'REQUESTABLE' | 'DENY';
+
+export interface ResourceAvailabilityItem {
+  resourceId: string;
+  resourceName: string;
+  resourceType: 'Data Asset' | 'Metric' | 'API Asset' | 'Spatial Dimension';
+  operations: {
+    DISCOVER: OperationPermission;
+    VIEW_METADATA: OperationPermission;
+    QUERY: OperationPermission;
+    EXPORT: OperationPermission;
+  };
+  checkedAt: string;
+  validUntil: string;
+  requestState: PermissionRequestState;
+  roleTag: string;
+  isCoreForExecution: boolean;
+}
+
+export interface AvailabilitySnapshotViewModel {
+  scenario: 'scenario-a' | 'scenario-b' | 'scenario-c';
+  timestamp: string;
+  resources: ResourceAvailabilityItem[];
+  totalCount: number;
+  availableCount: number;
+  requestPendingCount: number;
+  requestableCount: number;
+  deniedCount: number;
+  summaryLabel: string;
+  bottomSummaryText: string;
+}
+
 export interface Session {
   id: string;
   title: string;
@@ -51,12 +89,61 @@ export interface DataSolutionData {
   reasons: string[];
 }
 
+export interface ExecutionSelectionItem {
+  resourceId: string;
+  resourceName: string;
+  resourceType: string;
+  intendedOperations: string[];
+  roleTag?: string;
+}
+
+export interface ExecutionExcludedItem {
+  resourceId: string;
+  resourceName: string;
+  reason: string;
+  roleTag?: string;
+}
+
+export interface ExecutionSelection {
+  selectionId: string;
+  solutionId: string;
+  solutionRevision: number;
+  scenario?: 'scenario-a' | 'scenario-b' | 'scenario-c';
+  title?: string;
+  selectedItems: ExecutionSelectionItem[];
+  excludedItems: ExecutionExcludedItem[];
+  scope: {
+    geography?: string;
+    grain?: string;
+    timeRange?: string;
+  };
+  analysisModel: {
+    name: string;
+    metricFormula?: string;
+    summary: string;
+  };
+  limitations: string[];
+  timestamp?: string;
+}
+
 export interface ConfirmedContextData {
   dataset: string;
   metric: string;
   scope: string;
   dimension: string;
   statusText: string;
+  selectionId?: string;
+  revision?: number;
+  selectedItems?: Array<{
+    name: string;
+    type: string;
+    operations: string[];
+  }>;
+  excludedItems?: Array<{
+    name: string;
+    reason: string;
+  }>;
+  limitations?: string[];
 }
 
 export interface ResultData {
@@ -251,6 +338,7 @@ export interface ChatMessage {
   followUpChips?: string[];
   thoughtSteps?: string[];
   thoughtDuration?: string;
+  handoffStatus?: string[];
 }
 
 export interface EvidenceSource {

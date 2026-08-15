@@ -189,8 +189,29 @@ export const ConversationWorkspace: React.FC<Props> = ({
                 }`}
               >
 
-                {/* AI Thought Process CoT Accordion (At top of response card) */}
-                {!isUser && msg.thoughtSteps && (
+                {/* Handoff Status Indicators (Plain execution verification checks, NOT AI Thinking) */}
+                {!isUser && msg.handoffStatus && msg.handoffStatus.length > 0 && (
+                  <div className="mb-2.5 bg-emerald-50/70 border border-emerald-200/80 rounded-xl p-3 text-xs w-full max-w-2xl shadow-2xs">
+                    <div className="text-[11px] font-bold text-emerald-900 flex items-center gap-1.5 mb-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                      <span>执行上下文承接状态 (Handoff Status)</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      {msg.handoffStatus.map((statusItem, sIdx) => (
+                        <div
+                          key={sIdx}
+                          className="flex items-center gap-2 text-emerald-950 bg-white/90 px-2.5 py-1.5 rounded-lg border border-emerald-100/90 text-[11px] font-medium"
+                        >
+                          <span className="text-emerald-600 font-bold text-xs">✓</span>
+                          <span>{statusItem}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* AI Thought Process CoT Accordion (At top of response card, only when explicitly present and not handoff) */}
+                {!isUser && msg.thoughtSteps && !msg.handoffStatus && (
                   <ThoughtProcessAccordion
                     steps={msg.thoughtSteps}
                     duration={msg.thoughtDuration}

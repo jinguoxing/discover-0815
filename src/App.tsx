@@ -10,7 +10,14 @@ import {
   INITIAL_EVIDENCE,
   PRESET_CONVERSATION,
 } from './data/mockData';
-import { Session, ChatMessage, EvidenceState, SkillStatus } from './types';
+import {
+  Session,
+  ChatMessage,
+  EvidenceState,
+  SkillStatus,
+  ExecutionSelection,
+  ConfirmedContextData,
+} from './types';
 
 export default function App() {
   // Workbench mode: 'find' (Find Data / 找数demo执行页) or 'ask' (Ask Data / 问数)
@@ -19,6 +26,7 @@ export default function App() {
   const [activeSessionId, setActiveSessionId] = useState<string>('s1');
   const [messages, setMessages] = useState<ChatMessage[]>(PRESET_CONVERSATION);
   const [evidence, setEvidence] = useState<EvidenceState>(INITIAL_EVIDENCE);
+  const [activeSelection, setActiveSelection] = useState<ExecutionSelection | null>(null);
   const [highlightEvidenceKey, setHighlightEvidenceKey] = useState<string | undefined>();
   const [isConfirmedSolution, setIsConfirmedSolution] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -26,30 +34,154 @@ export default function App() {
   const [skillStatus, setSkillStatus] = useState<SkillStatus>('Ready');
   const [isFramedView, setIsFramedView] = useState<boolean>(false);
 
-  // Switch from Find Data to Ask Data with full Solution context
-  const handleEnterAskDataFromFindData = (solutionContext?: any) => {
+  // Switch from Find Data to Ask Data with full ExecutionSelection context
+  const handleEnterAskDataFromFindData = (selection?: ExecutionSelection) => {
     setViewMode('ask');
-    const systemPromptText = solutionContext?.plan === 'alternative'
-      ? '已无缝承接【找数·数据方案】：使用【60岁以上人口数 + 行政区划 + 养老机构信息】构建街镇级数据比较。请问您需要优先关注哪个街镇的数据？'
-      : '已无缝承接【Semovix AI 找数·数据方案】：基于【60岁以上人口数 + 行政区划 + 养老机构信息】与离散脱敏【人口基本信息视图】，已准备好为您开展闵行区老年人口与养老资源供需匹配问数研判。';
+    if (!selection) return;
 
-    setMessages((prev) => [
-      ...prev,
+    setActiveSelection(selection);
+
+    const selectedNames = selection.selectedItems.map((i) => i.resourceName).join(' + ');
+    const excludedNames = selection.excludedItems.map((e) => e.resourceName).join('、');
+    const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    // Dynamic greeting & summary
+    const systemPromptText = `已成功承接【语义找数 · 执行方案 (Selection ID: ${selection.selectionId}, Revision ${selection.solutionRevision})】。` +
+      `基于已授权的【${selectedNames}】构建${selection.scope.grain || '街镇级'}数据分析${selection.excludedItems.length > 0 ? `（已排除：${excludedNames}）` : ''}。` +
+      `已为您准备好开展${selection.scope.geography || '闵行区'}养老服务供需匹配问数研判。`;
+
+    const confirmedData: ConfirmedContextData = {
+      dataset: selectedNames,
+      metric: selection.analysisModel.name,
+      scope: `${selection.scope.geography || '上海市闵行区'} · ${selection.scope.grain || '14个街镇/工业区'}`,
+      dimension: selection.scope.grain || '街镇 (Sub-district)',
+      statusText: `已锁定 ${selection.selectedItems.length} 项已就绪资产（${selection.excludedItems.length > 0 ? `排除 ${excludedNames}` : '全部已授权'}）`,
+      selectionId: selection.selectionId,
+      revision: selection.solutionRevision,
+      selectedItems: selection.selectedItems.map((i) => ({
+        name: i.resourceName,
+        type: i.resourceType,
+        operations: i.intendedOperations,
+      })),
+      excludedItems: selection.excludedItems.map((e) => ({
+        name: e.resourceName,
+        reason: e.reason,
+      })),
+      limitations: selection.limitations,
+    };
+
+    // Update Right Panel Evidence state dynamically from selection
+    const dynamicSources = selection.selectedItems.map((item, idx) => ({
+      id: `src-${item.resourceId}-${idx}`,
+      name: item.resourceName,
+      type: item.resourceType === 'Metric' ? '标准统计指标' : '基础业务数据资产',
+      code: item.resourceId.startsWith('metric')
+        ? 'metric_elderly_pop_60'
+        : item.resourceId === 'asset_admin_division'
+        ? 'dim_administrative_district'
+        : item.resourceId === 'asset_nursing_home_basic'
+        ? 'dwd_elderly_care_org_base'
+        : item.resourceId === 'asset_nursing_service_capacity'
+        ? 'dwd_elderly_care_org_capacity'
+        : item.resourceId === 'asset_hotline_ticket'
+        ? 'ods_hotline_12345_tickets'
+        : item.resourceId,
+      qualityScore: '99.8%',
+      lastUpdated: '2026-08-15 04:00',
+      verifiedBySemovix: true,
+    }));
+
+    setEvidence({
+      sources: dynamicSources,
+      metricDef: {
+        name: selection.analysisModel.name,
+        formula: selection.analysisModel.metricFormula || selection.analysisModel.summary,
+        rule: selection.limitations.join('；'),
+        owner: '上海市民政局养老服务处 × Semovix 语义治理平台',
+        domain: '公共服务 / 养老资源规划',
+      },
+      conditions: [
+        { label: '分析范围', value: `${selection.scope.geography || '上海市闵行区'} (${selection.scope.grain || '14个街镇'})` },
+        { label: '执行选择', value: `${selection.selectedItems.length} 项已授权资产 (Rev ${selection.solutionRevision})` },
+        { label: '排除资产', value: selection.excludedItems.map((e) => `${e.resourceName} (${e.reason})`).join('；') || '无' },
+        { label: '统计周期', value: selection.scope.timeRange || '2026年半年度 (最新)' },
+      ],
+      dataQualityPassRate: '99.8%',
+      lineagePath: selection.scenario === 'scenario-b'
+        ? 'ODS_HOTLINE_12345 -> DWD_CITIZEN_APPEAL -> v_hotline_regional_distribution'
+        : 'ODS_CIVIL_ELDERLY -> DWD_CARE_ORG_BASE + DWD_CARE_ORG_CAPACITY -> v_senior_care_supply_demand',
+      securityLevel: 'C2 企业内部可信共享',
+      semanticCertified: true,
+    });
+
+    // Initial SQL & Analysis tailored to selection
+    const initialSql = selection.scenario === 'scenario-b'
+      ? `SELECT d.town_name,
+       p.pop_60_plus AS elderly_pop,
+       COUNT(t.ticket_id) AS total_tickets,
+       ROUND(COUNT(t.ticket_id) / (p.pop_60_plus / 10000), 2) AS tickets_per_myriad_pop
+FROM dim_administrative_district d
+JOIN metric_elderly_pop_60 p ON d.district_code = p.district_code AND d.town_code = p.town_code
+JOIN ods_hotline_12345_tickets t ON d.town_code = t.town_code
+WHERE d.district_name = '闵行区'
+GROUP BY d.town_name, p.pop_60_plus
+ORDER BY total_tickets DESC;`
+      : `SELECT d.town_name,
+       p.pop_60_plus AS elderly_pop,
+       SUM(c.bed_count) AS total_beds,
+       ROUND(SUM(c.bed_count) / (p.pop_60_plus / 1000), 1) AS beds_per_thousand_elderly
+FROM dim_administrative_district d
+JOIN metric_elderly_pop_60 p ON d.district_code = p.district_code AND d.town_code = p.town_code
+JOIN dwd_elderly_care_org_base b ON d.town_code = b.town_code
+JOIN dwd_elderly_care_org_capacity c ON b.org_id = c.org_id
+WHERE d.district_name = '闵行区'
+GROUP BY d.town_name, p.pop_60_plus
+ORDER BY elderly_pop DESC;`;
+
+    const newHandoffMessages: ChatMessage[] = [
+      // Message 1: Context Binding
       {
-        id: `msg-handoff-${Date.now()}`,
+        id: `msg-handoff-context-${Date.now()}`,
         sender: 'ai',
         text: systemPromptText,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        cardType: 'text',
-        thoughtSteps: [
-          '接收语义找数输出的数据方案 (Data Solution Context)',
-          '继承业务目标：老年人口规模 × 养老服务资源匹配',
-          '通过 Semovix 数据共享总线安全校验可用资源权限',
-          '进入实时交互式问数与深度研判模式',
+        timestamp: nowTime,
+        cardType: 'confirmed_context',
+        confirmedData,
+        handoffStatus: [
+          '已继承数据方案',
+          `已继承分析范围 (${selection.scope.geography || '上海市闵行区'} · ${selection.scope.grain || '14个街镇'})`,
+          '已准备当前资源上下文',
+          '进入执行前将重新校验资源权限',
         ],
-        thoughtDuration: '0.9 秒',
       },
-    ]);
+      // Message 2: Initial Analysis Result
+      {
+        id: `msg-handoff-result-${Date.now() + 1}`,
+        sender: 'ai',
+        text: `基于当前选定的 ${selection.selectedItems.length} 项资产，已完成闵行区 14 个街镇 60 岁以上老年人口与养老机构床位供需匹配测算：`,
+        timestamp: nowTime,
+        cardType: 'analysis_result',
+        analysisData: {
+          summary: '全区 60 岁以上老年人口 48.6 万人，养老机构备案床位共 15,200 张，平均每千名老人拥有床位 31.3 张。其中莘庄镇、七宝镇老龄人口最多但千人床位数偏低，存在明显供给承载压力。',
+          chartTitle: '重点街镇每千名老人床位数与老年人口对比',
+          tableData: [
+            { town: '莘庄镇', population: '5.8万人 (老人)', popNum: 21.6, ratio: '1,250 张床位 (千人床位 21.6)' },
+            { town: '七宝镇', population: '5.2万人 (老人)', popNum: 18.8, ratio: '980 张床位 (千人床位 18.8)' },
+            { town: '颛桥镇', population: '4.9万人 (老人)', popNum: 34.7, ratio: '1,700 张床位 (千人床位 34.7)' },
+            { town: '梅陇镇', population: '3.8万人 (老人)', popNum: 28.9, ratio: '1,100 张床位 (千人床位 28.9)' },
+            { town: '虹桥镇', population: '4.1万人 (老人)', popNum: 36.6, ratio: '1,500 张床位 (千人床位 36.6)' },
+          ],
+        },
+        sqlQuery: initialSql,
+        followUpChips: [
+          '哪些街镇养老床位缺口最大？',
+          '养老服务资源应该优先布局在哪里？',
+          '查看当前执行选择与限制条件',
+        ],
+      },
+    ];
+
+    setMessages(newHandoffMessages);
   };
 
   // Switch session
@@ -141,7 +273,82 @@ export default function App() {
       let metadataMappingData = undefined;
 
       // Match realistic government prompt keywords to rich card types
-      if (text.includes('API') || text.includes('接口') || text.includes('共享总线')) {
+      if (text.includes('执行选择') || text.includes('限制条件') || text.includes('边界说明') || text.includes('选择方案')) {
+        cardType = 'confirmed_context';
+        const currentSel = activeSelection;
+        const selectedNames = currentSel ? currentSel.selectedItems.map((i) => i.resourceName).join(' + ') : '60岁以上人口数 + 行政区划 + 养老机构基本信息 + 养老机构服务能力';
+        const excludedNames = currentSel && currentSel.excludedItems.length > 0 ? currentSel.excludedItems.map((e) => e.resourceName).join('、') : '人口基本信息';
+        
+        const confirmedData: ConfirmedContextData = {
+          dataset: selectedNames,
+          metric: currentSel?.analysisModel.name || '街镇级养老服务供需匹配度分析',
+          scope: `${currentSel?.scope.geography || '上海市闵行区'} · ${currentSel?.scope.grain || '14个街镇/工业区'}`,
+          dimension: currentSel?.scope.grain || '街镇 (Sub-district)',
+          statusText: `当前生效 Execution Selection (4项已授权 · 1项排除)`,
+          selectionId: currentSel?.selectionId || 'SEL-20260815-SC-04',
+          revision: currentSel?.solutionRevision || 2,
+          selectedItems: currentSel?.selectedItems.map((i) => ({
+            name: i.resourceName,
+            type: i.resourceType,
+            operations: i.intendedOperations,
+          })) || [
+            { name: '60岁以上人口数', type: 'Metric', operations: ['DISCOVER', 'VIEW_METADATA', 'QUERY', 'EXPORT'] },
+            { name: '行政区划', type: 'Data Asset', operations: ['DISCOVER', 'VIEW_METADATA', 'QUERY', 'EXPORT'] },
+            { name: '养老机构基本信息', type: 'Data Asset', operations: ['DISCOVER', 'VIEW_METADATA', 'QUERY', 'EXPORT'] },
+            { name: '养老机构服务能力', type: 'Data Asset', operations: ['DISCOVER', 'VIEW_METADATA', 'QUERY', 'EXPORT'] },
+          ],
+          excludedItems: currentSel?.excludedItems.map((e) => ({
+            name: e.resourceName,
+            reason: e.reason,
+          })) || [
+            { name: '人口基本信息', reason: 'QUERY REQUESTABLE · 需申请使用权 (用户选择暂不使用)' }
+          ],
+          limitations: currentSel?.limitations || [
+            '基于供给侧机构床位能力测算，不含实时人级入住与个体健康档案记录',
+            '排除人级明细表 (人口基本信息暂未申请 / 保持不可查询状态)',
+          ],
+        };
+
+        const aiMsg: ChatMessage = {
+          id: `msg-ai-${Date.now()}`,
+          sender: 'ai',
+          text: `当前问数会话严格受控于【执行选择方案 (Execution Selection)】，未调用未授权的人级明细表：`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          cardType: 'confirmed_context',
+          confirmedData,
+          handoffStatus: [
+            '已继承数据方案',
+            '已继承分析范围与下钻粒度',
+            '已准备当前资源上下文',
+            '进入执行前将重新校验资源权限',
+          ],
+          followUpChips: [
+            '哪些街镇养老床位缺口最大？',
+            '养老服务资源应该优先布局在哪里？',
+            '查看重点街镇床位供需测算明细',
+          ],
+        };
+
+        setMessages((prev) => [...prev, aiMsg]);
+        setIsLoading(false);
+        setSkillStatus('Ready');
+        return;
+      } else if (text.includes('缺口') || text.includes('床位缺口') || text.includes('供需')) {
+        cardType = 'spatial_gap';
+        spatialGapData = {
+          title: '重点街镇 60 岁以上老年人口与养老机构床位供需缺口分析',
+          summary: '莘庄镇（千人床位数 21.6 张）与七宝镇（千人床位数 18.8 张）老龄人口集中且千人床位数远低于全市平均水平 (35 张)，处于重度供给紧缺状态。',
+          rows: [
+            { town: '莘庄镇', elderlySolo: '5.8 万人', canteenCount: 12, careBeds: 1250, coverage500m: '21.6 张/千人', gapLevel: '高压缺口' },
+            { town: '七宝镇', elderlySolo: '5.2 万人', canteenCount: 9, careBeds: 980, coverage500m: '18.8 张/千人', gapLevel: '极度紧缺' },
+            { town: '颛桥镇', elderlySolo: '4.9 万人', canteenCount: 8, careBeds: 1700, coverage500m: '34.7 张/千人', gapLevel: '基本平衡' },
+            { town: '梅陇镇', elderlySolo: '3.8 万人', canteenCount: 10, careBeds: 1100, coverage500m: '28.9 张/千人', gapLevel: '轻度缺口' },
+          ],
+          keyFinding: '莘庄镇与七宝镇合计存在约 1,600 张养老床位规划缺口，建议结合老旧小区空间存量优先推进公建民营嵌入式养老床位扩充。',
+        };
+      } else if (text.includes('优先布局') || text.includes('布局') || text.includes('规划建议')) {
+        cardType = 'insight';
+      } else if (text.includes('API') || text.includes('接口') || text.includes('共享总线')) {
         cardType = 'api_asset';
         apiAssetData = {
           apiCode: 'API_GOV_ECO_BOOST_V2',

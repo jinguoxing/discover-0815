@@ -472,7 +472,9 @@ export const SemovixFindDataDemo: React.FC<Props> = ({ onEnterAskData }) => {
                             </div>
                             <p className="text-xs text-[#667085] mt-0.5">当前最小且足够资源组合</p>
                           </div>
-                          <span className="text-xs font-mono font-bold text-[#2563EB]">V1.0 Minimal & Sufficient</span>
+                          <span className="text-xs font-semibold text-[#2563EB] bg-blue-50 px-2.5 py-1 rounded-md border border-blue-200">
+                            当前方案
+                          </span>
                         </div>
 
                         {/* Resources List */}
@@ -721,6 +723,7 @@ export const SemovixFindDataDemo: React.FC<Props> = ({ onEnterAskData }) => {
                           <ol className="list-decimal list-inside space-y-1 text-slate-600 bg-[#F7F9FC] p-2.5 rounded-lg border border-[#E6EAF0]">
                             <li>查找是否存在已发布的 65 岁以上人口指标</li>
                             <li>如无正式指标，在获得人口明细权限后进入分析阶段按年龄条件查询</li>
+                            <li>当前未发现正式发布的“老龄化率”指标。如业务需要，可前往指标管理创建或完善正式指标定义（Find Data 不自动创建正式 Metric）</li>
                           </ol>
                         </div>
                       </div>

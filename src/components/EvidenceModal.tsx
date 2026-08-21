@@ -57,10 +57,10 @@ export const EvidenceModal: React.FC<Props> = ({ isOpen, onClose, evidence }) =>
               <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
               <div>
                 <div className="font-bold text-emerald-900">
-                  Semovix 语义治理平台官方认证凭证
+                  Semovix 语义治理平台核验凭证
                 </div>
                 <div className="text-[11px] text-emerald-700/80 mt-0.5">
-                  指标与数据资产符合企业级语义规范 (Semantic Governance Certified)
+                  指标与数据资产符合企业级语义与质量规范
                 </div>
               </div>
             </div>

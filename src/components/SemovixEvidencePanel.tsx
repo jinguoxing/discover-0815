@@ -108,13 +108,17 @@ export const SemovixEvidencePanel: React.FC<Props> = ({
               {/* Fact A: Metric Registry */}
               <div className="p-3 bg-[#F7F9FC] border border-[#E6EAF0] rounded-lg space-y-1.5">
                 <div className="flex items-center justify-between text-[11px]">
-                  <span className="font-semibold text-[#172033]">Metric Registry</span>
+                  <span className="font-semibold text-[#172033]">Metric Registry (正式指标库)</span>
                   <span className="px-1.5 py-0.2 bg-emerald-50 text-[#16A36A] text-[9px] font-mono rounded font-semibold border border-emerald-200">
                     Published
                   </span>
                 </div>
                 <div className="font-bold text-[#172033] text-xs">60岁以上人口数</div>
                 <p className="text-[11px] text-[#667085]">官方统计口径，基于统计局常住人口摸底数据。</p>
+                <div className="pt-1 text-[10px] text-slate-500 bg-white p-2 rounded border border-slate-200/70">
+                  <span className="font-medium text-slate-700">指标治理规则：</span>
+                  当前未发现正式发布的“老龄化率”指标。如业务需要，可前往指标管理创建或完善正式指标定义。Find Data 阶段不自动创建正式 Metric。
+                </div>
               </div>
 
               {/* Fact B: Business Semantics */}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, X, CheckCircle, Lock, Calendar, Clock, AlertCircle } from 'lucide-react';
+import { ShieldCheck, X, Lock, Calendar, Clock, FileText, CheckCircle2 } from 'lucide-react';
 import { PermissionRequestState, ResourceAvailabilityItem } from '../types';
 
 interface Props {
@@ -23,6 +23,7 @@ export const SemovixPermissionDrawer: React.FC<Props> = ({
   const [duration, setDuration] = useState<'7d' | '30d' | '90d'>('30d');
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPolicyModal, setShowPolicyModal] = useState(false);
 
   if (!isOpen) return null;
 
@@ -44,6 +45,7 @@ export const SemovixPermissionDrawer: React.FC<Props> = ({
 
   const handleClose = () => {
     setSubmitted(false);
+    setShowPolicyModal(false);
     onClose();
   };
 
@@ -62,7 +64,7 @@ export const SemovixPermissionDrawer: React.FC<Props> = ({
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 rounded-lg transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
@@ -72,7 +74,7 @@ export const SemovixPermissionDrawer: React.FC<Props> = ({
         {/* Drawer Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6 text-xs text-slate-700">
           {isPending ? (
-            <div className="py-8 text-center space-y-4">
+            <div className="py-6 text-center space-y-4">
               <div className="w-14 h-14 bg-amber-50 border border-amber-200 text-amber-600 rounded-full flex items-center justify-center mx-auto shadow-xs">
                 <Clock className="w-7 h-7 animate-pulse" />
               </div>
@@ -80,46 +82,55 @@ export const SemovixPermissionDrawer: React.FC<Props> = ({
                 <div className="inline-block px-2.5 py-0.5 bg-amber-100 text-amber-800 font-mono text-[10px] font-bold rounded-full mb-1.5 border border-amber-200">
                   REQUEST_PENDING
                 </div>
-                <h4 className="text-base font-bold text-slate-800">申请处理中 · 审批流转中</h4>
+                <h4 className="text-base font-bold text-slate-800">申请已提交</h4>
                 <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
-                  授权申请单已推入 Semovix 数据合规审批队列。当前权限状态仍为 <strong className="text-amber-800">REQUESTABLE (待授权)</strong>。
+                  授权申请单已提交，当前权限状态为 <strong className="text-amber-800">审批中 (REQUEST_PENDING)</strong>。
                 </p>
               </div>
 
               <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-left space-y-2.5 mt-4 text-[11px]">
                 <div className="flex justify-between text-slate-500 pb-1.5 border-b border-slate-200/60">
                   <span>申请单号</span>
-                  <span className="font-mono font-medium text-slate-800">REQ-2026-0815-9921</span>
+                  <span className="font-mono font-bold text-slate-800">REQ-2026-0815-9921</span>
                 </div>
                 <div className="flex justify-between text-slate-500 pb-1.5 border-b border-slate-200/60">
-                  <span>目标资源 (Resource)</span>
+                  <span>目标资源</span>
                   <span className="font-semibold text-slate-800">{targetName}</span>
                 </div>
                 <div className="flex justify-between text-slate-500 pb-1.5 border-b border-slate-200/60">
-                  <span>申请操作 (Operation)</span>
+                  <span>申请操作</span>
                   <span className="font-mono text-indigo-700 bg-indigo-50 px-1.5 py-0.2 rounded border border-indigo-100 font-medium">QUERY (明细查询)</span>
                 </div>
                 <div className="flex justify-between text-slate-500 pb-1.5 border-b border-slate-200/60">
-                  <span>当前状态 (State)</span>
-                  <span className="text-amber-800 font-bold bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
-                    REQUEST_PENDING
+                  <span>当前状态</span>
+                  <span className="text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span>
+                    审批中
                   </span>
                 </div>
                 <div className="flex justify-between text-slate-500 pb-1.5 border-b border-slate-200/60">
-                  <span>快照检查时间</span>
+                  <span>提交时间</span>
                   <span className="font-mono text-slate-600">{resource?.checkedAt || '刚刚'}</span>
-                </div>
-                <div className="flex justify-between text-slate-500">
-                  <span>审批流程节点</span>
-                  <span className="text-amber-700 font-medium flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span>
-                    <span>数据安全官 (DSO) 审阅中</span>
-                  </span>
                 </div>
               </div>
 
-              <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-lg text-left text-[11px] text-amber-900 leading-relaxed">
-                <strong>状态机说明：</strong> 只有在合规审批完成并由 Permission Service 返回 <span className="font-mono font-bold text-amber-950">ALLOW</span> 之后，该资源的 QUERY 权限才会从 <span className="font-mono font-bold">REQUESTABLE</span> 变更为 <span className="font-mono font-bold text-emerald-700">AVAILABLE</span>。
+              {/* Policy note */}
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-left text-[11px] text-slate-700 space-y-1.5">
+                <div className="flex items-start gap-2">
+                  <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <p className="leading-relaxed">
+                    数据使用将按照当前组织的数据安全和脱敏策略执行。
+                  </p>
+                </div>
+                <div className="pl-6">
+                  <button
+                    type="button"
+                    onClick={() => setShowPolicyModal(true)}
+                    className="text-[#2563EB] hover:underline font-medium cursor-pointer"
+                  >
+                    查看适用策略 →
+                  </button>
+                </div>
               </div>
 
               <div className="pt-2">
@@ -210,12 +221,23 @@ export const SemovixPermissionDrawer: React.FC<Props> = ({
                 </div>
               </div>
 
-              {/* Governance Notice */}
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-start gap-2 text-[11px] text-slate-600">
-                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                <p>
-                  提交后将自动触发离散脱敏策略。脱敏规则：隐藏身份证中段 8 位，姓名脱敏为姓氏+*。
-                </p>
+              {/* Governance Notice (P1-05) */}
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-1.5 text-[11px] text-slate-600">
+                <div className="flex items-start gap-2">
+                  <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <p className="leading-relaxed">
+                    数据使用将按照当前组织的数据安全和脱敏策略执行。
+                  </p>
+                </div>
+                <div className="pl-6">
+                  <button
+                    type="button"
+                    onClick={() => setShowPolicyModal(true)}
+                    className="text-[#2563EB] hover:underline font-medium cursor-pointer"
+                  >
+                    查看适用策略 →
+                  </button>
+                </div>
               </div>
 
               {/* Submit Button */}
@@ -232,6 +254,61 @@ export const SemovixPermissionDrawer: React.FC<Props> = ({
           )}
         </div>
       </div>
+
+      {/* Applicable Policy Modal (P1-05) */}
+      {showPolicyModal && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-5 space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-blue-600" />
+                <h4 className="font-bold text-sm text-slate-800">组织适用数据安全与脱敏策略</h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPolicyModal(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs text-slate-600 leading-relaxed">
+              <p>
+                本资源的使用受当前企业/组织发布的数据合规策略管辖：
+              </p>
+              <ul className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200/80">
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                  <span><strong>分类分级保护：</strong>依据数据分类分级标准进行最小权限原则授权。</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                  <span><strong>动态脱敏与隐私保护：</strong>涉及敏感个人标识的字段在分析时由安全引擎根据调用上下文动态脱敏。</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                  <span><strong>操作日志审计：</strong>明细查询及导出操作全流程记录审计日志并接受定期合规复核。</span>
+                </li>
+              </ul>
+              <p className="text-[11px] text-slate-500">
+                如有特殊业务需要，请联系本部门数据安全管理员获取进一步指导。
+              </p>
+            </div>
+
+            <div className="pt-2 border-t border-slate-200 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowPolicyModal(false)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs rounded-lg transition-colors cursor-pointer"
+              >
+                我知道了
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
